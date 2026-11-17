@@ -7,7 +7,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
@@ -42,7 +42,8 @@ type Obj = Record<string, any>;
 
 const SITE_URL = (process.env.NUSACODE_SITE_URL ?? 'https://nusagate.com').replace(/\/+$/, '');
 const API_URL = (process.env.NUSAGATE_API_URL ?? 'https://api.nusagate.com').replace(/\/+$/, '');
-const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+/** The name the NusaGate dashboard shows on the key ("Sable (login)"); the same in the URL and the exchange. */
+const APP_NAME = 'Sable';
 /** pi's thinking levels Sable can show; "off" has no Effort and reads as minimal. */
 const EFFORTS: Effort[] = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 
@@ -258,7 +259,8 @@ export function transcript(messages: Obj[], cwd: string): TimelineItem[] {
 // ──────────────────────────────── sign-in ────────────────────────────────
 
 /** NusaGate's PKCE sign-in, as in NusaCode's pack/lib/login.ts: resolves with an API key. */
-async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSignal): Promise<string> {
+export async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSignal): Promise<string> {
+  if (signal.aborted) throw new Error('Sign-in cancelled');
   const verifier = randomBytes(32).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
   const state = randomBytes(16).toString('base64url');
@@ -276,6 +278,8 @@ async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSig
       servers.push(createServer(handler), createServer(handler));
       signal.addEventListener('abort', () => reject(new Error('Sign-in cancelled')), { once: true });
     });
+    // A cancel while the listeners start rejects before anything awaits: keep it from going unhandled.
+    landed.catch(() => {});
     await new Promise<void>((resolve, reject) => {
       servers[0].once('error', reject);
       servers[0].listen(0, '127.0.0.1', resolve);
@@ -286,8 +290,9 @@ async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSig
       servers[1].once('error', () => resolve());
       servers[1].listen(port, '::1', resolve);
     });
+    if (signal.aborted) throw new Error('Sign-in cancelled'); // never open a browser for a cancelled sign-in
     const connect = new URL('/dashboard/connect', SITE_URL);
-    connect.search = new URLSearchParams({ callback_url: `http://127.0.0.1:${port}/callback`, code_challenge: challenge, code_challenge_method: 'S256', app: 'NusaCode', state }).toString();
+    connect.search = new URLSearchParams({ callback_url: `http://127.0.0.1:${port}/callback`, code_challenge: challenge, code_challenge_method: 'S256', app: APP_NAME, state }).toString();
     onUrl(connect.toString());
     const back = await landed;
     if (back.searchParams.get('error')) throw new Error(back.searchParams.get('error') === 'access_denied' ? 'Sign-in was cancelled' : `Sign-in failed: ${back.searchParams.get('error')}`);
@@ -295,7 +300,7 @@ async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSig
     const res = await fetch(`${SITE_URL}/api/auth/keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: back.searchParams.get('code'), code_verifier: verifier, app: 'NusaCode' }),
+      body: JSON.stringify({ code: back.searchParams.get('code'), code_verifier: verifier, app: APP_NAME }),
       signal,
     });
     const body = (await res.json().catch(() => ({}))) as { apiKey?: unknown; message?: unknown };
@@ -304,6 +309,28 @@ async function signInWithNusaGate(onUrl: (url: string) => void, signal: AbortSig
   } finally {
     for (const s of servers) s.close();
   }
+}
+
+/**
+ * Saves a NusaGate key into an agent folder's auth.json the way NusaCode's /setup does (`saveApiKey` in
+ * pack/extensions/setup.ts): an `api_key` entry every NusaCode version reads, written atomically and
+ * private. An auth.json that does not parse is left alone rather than replaced.
+ */
+export function saveApiKey(home: string, key: string) {
+  const target = path.join(home, 'auth.json');
+  let auth: Obj = {};
+  if (existsSync(target)) {
+    try {
+      auth = JSON.parse(readFileSync(target, 'utf8'));
+    } catch {
+      throw new Error(`${target} could not be read; fix or remove it, then sign in again`);
+    }
+  }
+  mkdirSync(home, { recursive: true });
+  const temp = `${target}.tmp`;
+  writeFileSync(temp, `${JSON.stringify({ ...auth, nusagate: { type: 'api_key', key } }, null, 2)}
+`, { mode: 0o600 });
+  renameSync(temp, target);
 }
 
 /** Opens a link in the default browser (rundll32 takes the URL as one argument, unlike `start`). */
@@ -379,9 +406,7 @@ export class NusaCodeProvider implements Provider {
         this.ctx.emit({ type: 'auth.progress', provider: this.id, state: 'url', url });
         openBrowser(url);
       }, ctrl.signal);
-      mkdirSync(this.configHome(), { recursive: true });
-      // The same entry NusaCode's /login writes: the key never expires and is revoked from the dashboard.
-      writeFileSync(this.authFile(), JSON.stringify({ ...this.readAuth(), nusagate: { type: 'oauth', access: key, refresh: key, expires: Date.now() + TEN_YEARS_MS } }, null, 2));
+      saveApiKey(this.configHome(), key);
       this.caps0 = undefined;
     } finally {
       if (this.loginAbort === ctrl) this.loginAbort = undefined;
@@ -435,11 +460,12 @@ export class NusaCodeProvider implements Provider {
       const pass = body.pass;
       if (pass && typeof pass.valueTotalIdr === 'number' && pass.valueTotalIdr > 0 && typeof pass.valueRemainingIdr === 'number') {
         const ends = Date.parse(pass.endsAt);
+        const mins = Math.round((ends - Date.parse(pass.startsAt)) / 60_000);
         limits.push({
           id: 'nusagate:pass',
           label: 'Coding Plan',
-          // shortcut: assumes the 30-day pass; read the length from the API if other pass lengths appear.
-          windowMins: 30 * 24 * 60,
+          // A week or a month plan: its length from the pass itself.
+          ...(mins > 0 ? { windowMins: mins } : {}),
           percent: Math.max(0, Math.min(100, Math.round((1 - pass.valueRemainingIdr / pass.valueTotalIdr) * 100))),
           ...(Number.isFinite(ends) ? { resetsAt: ends } : {}),
         });
@@ -564,8 +590,14 @@ export function readSessionHead(file: string): { id?: string; cwd?: string; name
 
 // ──────────────────────────────── session ────────────────────────────────
 
-class NusaCodeSession implements ProviderSession {
+export class NusaCodeSession implements ProviderSession {
   private running = false;
+  /**
+   * Runs pi still owes an `agent_settled` for, counted from when the prompt is sent. A stopped run
+   * can settle after Sable has already ended its turn and started the next one: while a newer run
+   * is still owed, that late settle belongs to the old run and is ignored.
+   */
+  private owed = 0;
   private queue: UserItem[] = [];
   /** Steered messages pi has queued, by text, until it takes them. */
   private steers: UserItem[] = [];
@@ -592,6 +624,7 @@ class NusaCodeSession implements ProviderSession {
       }
     };
     rpc.onExit = (why) => {
+      this.owed = 0;
       if (!this.running) return;
       this.rt.settle('error');
       this.rt.notice('error', 'NusaCode stopped', why);
@@ -621,11 +654,16 @@ class NusaCodeSession implements ProviderSession {
     this.stopping = false;
     if (item.state === 'queued') this.rt.taken(item.id);
     this.rt.beginTurn('Thinking');
+    this.owed++;
     try {
       const r = await this.rpc.request('prompt', payload(item));
       // An extension command (/usage, /budget…) answers by itself: no run follows.
-      if (r?.disposition === 'handled') this.finish();
+      if (r?.disposition === 'handled') {
+        this.owed--;
+        this.finish();
+      }
     } catch (err) {
+      this.owed--;
       this.rt.notice('error', 'NusaCode refused the message', errMsg(err));
       this.finish(errMsg(err));
     }
@@ -701,6 +739,8 @@ class NusaCodeSession implements ProviderSession {
         return;
       }
       case 'agent_settled':
+        this.owed = Math.max(0, this.owed - 1);
+        if (this.owed > 0) return; // a stopped run settling late: the current turn is still going
         // Anything still running at the end was cut off: by the stop, or by a failure.
         rt.settle(r.aborted ? 'cancelled' : 'error');
         return this.finish(r.aborted ? undefined : this.lastError);
