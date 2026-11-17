@@ -12,9 +12,10 @@ import type { AccountFolder, AuthState, ProviderId, RateLimit } from '../../shar
 const MARKERS: Partial<Record<ProviderId, string[]>> = {
   claude: ['projects', 'settings.json', '.claude.json', 'plugins', 'todos', 'statsig', 'history.jsonl', 'shell-snapshots', 'ide'],
   codex: ['config.toml', 'sessions', 'history.jsonl', 'log', 'version.json'],
+  nusacode: ['sessions', 'settings.json', 'models.json', 'nusagate-models.json', 'usage.jsonl'],
 };
 
-const PREFIX: Partial<Record<ProviderId, string>> = { claude: 'claude', codex: 'codex' };
+const PREFIX: Partial<Record<ProviderId, string>> = { claude: 'claude', codex: 'codex', nusacode: 'nusacode' };
 
 const norm = (p: string) => path.resolve(p).replace(/[\\/]+$/, '').toLowerCase();
 

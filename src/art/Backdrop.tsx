@@ -17,9 +17,9 @@ import { DitherField, type DitherPalette } from './DitherField';
  */
 
 /** The home light per agent. */
-const HOME_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', demo: 'forest' };
+const HOME_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', nusacode: 'mint', demo: 'forest' };
 /** Inside a session Demo glows mint. */
-const SESSION_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', demo: 'mint' };
+const SESSION_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', nusacode: 'mint', demo: 'mint' };
 
 /** The amount at which a surface looks as it did before the config existed. */
 const REFERENCE_AMOUNT = 60;

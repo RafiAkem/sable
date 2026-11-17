@@ -11,6 +11,8 @@ export function planLabel(auth: AuthState | undefined): string | undefined {
   if (method === 'apikey' || method === 'console' || method === 'api') return 'API key';
   // An agent that runs on this computer has no subscription to name.
   if (method === 'local') return undefined;
+  // NusaCode signs in with a NusaGate key: the brand is the label ("NusaGate plan" would read as a tier).
+  if (method === 'nusagate') return 'NusaGate';
   const plan = formatPlan(auth.plan);
   if (plan) return plan;
   if (method === 'claude.ai' || method === 'claudeai' || method === 'oauth') return 'Claude subscription';
@@ -71,7 +73,7 @@ export const needsAccount = (info: ProviderInfo | undefined) => !!info && !(info
 
 /** Every agent the bridge reports that has an account to connect: Claude Code and Codex first, then any others. */
 export function connectableAgents(providers: Partial<Record<ProviderId, ProviderInfo>>): ProviderId[] {
-  const known: ProviderId[] = ['claude', 'codex'];
+  const known: ProviderId[] = ['claude', 'codex', 'nusacode'];
   const others = (Object.keys(providers) as ProviderId[]).filter((id) => !known.includes(id) && needsAccount(providers[id]));
   return [...known, ...others];
 }
@@ -80,4 +82,5 @@ export function connectableAgents(providers: Partial<Record<ProviderId, Provider
 export const INSTALL: Partial<Record<ProviderId, string>> = {
   claude: 'npm install -g @anthropic-ai/claude-code',
   codex: 'npm install -g @openai/codex',
+  nusacode: 'npm install -g nusacode',
 };

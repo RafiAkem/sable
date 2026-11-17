@@ -128,6 +128,14 @@ export function ProviderMark({ provider, size = 16, className, style }: { provid
       </svg>
     );
   }
+  if (provider === 'nusacode') {
+    // NusaGate's N: two posts and the crossbar of a gate.
+    return (
+      <svg {...common} viewBox="0 0 24 24" data-provider="nusacode">
+        <path d="M5.5 19.5v-15l13 15v-15" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
   return (
     <svg {...common} viewBox="0 0 24 24" data-provider="demo">
       <g fill="currentColor">
@@ -143,6 +151,7 @@ export function ProviderMark({ provider, size = 16, className, style }: { provid
 export const PROVIDER_NAME: Record<ProviderId, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
+  nusacode: 'NusaCode',
   demo: 'Demo',
 };
 

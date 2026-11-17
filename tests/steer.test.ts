@@ -356,9 +356,9 @@ describe('the Demo agent is development-only', () => {
     const prev = process.env.SABLE_DEMO;
     try {
       delete process.env.SABLE_DEMO;
-      expect(defaultProviders()).toHaveLength(2);
-      process.env.SABLE_DEMO = '1';
       expect(defaultProviders()).toHaveLength(3);
+      process.env.SABLE_DEMO = '1';
+      expect(defaultProviders()).toHaveLength(4);
     } finally {
       if (prev === undefined) delete process.env.SABLE_DEMO;
       else process.env.SABLE_DEMO = prev;

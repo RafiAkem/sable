@@ -54,7 +54,8 @@ export function AccountSwitcher() {
   const many = agents.reduce((n, id) => n + accountsOf(providers[id]).length, 0) >= MANY_ACCOUNTS;
 
   const name = current ? accountName(current) : PROVIDER_NAME[focus];
-  const headline = current?.auth.loggedIn ? (plan ? `${plan} plan` : PROVIDER_NAME[focus]) : 'Not signed in';
+  // A NusaGate key is not a tier: "NusaGate", not "NusaGate plan".
+  const headline = current?.auth.loggedIn ? (plan ? (current.auth.method === 'nusagate' ? plan : `${plan} plan`) : PROVIDER_NAME[focus]) : 'Not signed in';
   const described = [PROVIDER_NAME[focus], several ? name : undefined, headline].filter(Boolean).join(', ');
 
   return (

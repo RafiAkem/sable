@@ -99,3 +99,6 @@ export function codexPlan(account: { type?: string; planType?: string | null } |
       return account.type ? { plan: titleCase(account.type) } : {};
   }
 }
+
+/** NusaCode: every sign-in is a NusaGate API key; a Coding Plan shows as a limit, not as the plan name. */
+export const NUSAGATE_PLAN: PlanName = { plan: 'NusaGate' };

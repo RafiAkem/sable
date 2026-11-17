@@ -15,7 +15,7 @@ import { useStore } from '@/state/store';
 import { handoffPhase, subscribeHandoff } from './handoff';
 import './home.css';
 
-export const PROVIDER_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', demo: 'forest' };
+export const PROVIDER_PALETTE: Record<ProviderId, DitherPalette> = { claude: 'ember', codex: 'iris', nusacode: 'mint', demo: 'forest' };
 
 /** The composer rises in after the mark: a short rise and fade, opacity and transform only. */
 function rise(el: Element | null, delay: number) {

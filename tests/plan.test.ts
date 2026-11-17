@@ -14,6 +14,7 @@ describe('planLabel', () => {
     expect(planLabel(auth('max20x'))).toBe('Max 20x plan');
     expect(planLabel(auth('team'))).toBe('Team plan');
     expect(planLabel(auth('Enterprise plan'))).toBe('Enterprise plan');
+    expect(planLabel(auth('NusaGate', 'nusagate'))).toBe('NusaGate');
   });
 
   it('says API key for key sign-ins and falls back to the kind of sign-in', () => {
@@ -32,9 +33,9 @@ describe('planLabel', () => {
 });
 
 describe('connectableAgents', () => {
-  it('lists Claude Code and Codex first, then reported agents that need an account', () => {
+  it('lists Claude Code, Codex and NusaCode first, then reported agents that need an account', () => {
     const p = (id: string, method?: string) => ({ id, name: id, installed: true, auth: { loggedIn: true, method } }) as unknown as ProviderInfo;
-    expect(connectableAgents({ demo: p('demo', 'local') })).toEqual(['claude', 'codex']);
-    expect(connectableAgents({ codex: p('codex'), claude: p('claude') })).toEqual(['claude', 'codex']);
+    expect(connectableAgents({ demo: p('demo', 'local') })).toEqual(['claude', 'codex', 'nusacode']);
+    expect(connectableAgents({ codex: p('codex'), claude: p('claude') })).toEqual(['claude', 'codex', 'nusacode']);
   });
 });

@@ -9,7 +9,7 @@
 
 // ───────────────────────────── providers & auth ─────────────────────────────
 
-export type ProviderId = 'claude' | 'codex' | 'demo';
+export type ProviderId = 'claude' | 'codex' | 'nusacode' | 'demo';
 
 export interface AuthState {
   loggedIn: boolean;

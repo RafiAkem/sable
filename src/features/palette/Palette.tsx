@@ -82,7 +82,7 @@ function PaletteBody({ onRun }: { onRun: (item: PaletteItem) => void }) {
   const items = useMemo(() => {
     const sessions = Object.values(sessionsMap).sort((a, b) => Number(!!a.archived) - Number(!!b.archived) || b.updatedAt - a.updatedAt);
     const installed = (Object.values(providers).filter((p) => p?.installed).map((p) => p!.id) as ProviderId[]).sort(
-      (a, b) => ['claude', 'codex', 'demo'].indexOf(a) - ['claude', 'codex', 'demo'].indexOf(b),
+      (a, b) => ['claude', 'codex', 'nusacode', 'demo'].indexOf(a) - ['claude', 'codex', 'nusacode', 'demo'].indexOf(b),
     );
     const projs = [...projects].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.lastOpened - a.lastOpened);
     const accountName = (s: SessionMeta) => {
