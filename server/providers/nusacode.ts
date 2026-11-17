@@ -68,7 +68,8 @@ export class PiRpc {
   onExit: (why: string) => void = () => {};
 
   constructor(cli: string, cwd: string, home: string | undefined, args: string[] = []) {
-    this.proc = spawn(process.execPath, [cli, '--mode', 'rpc', ...args], {
+    // In the desktop app execPath is Sable.exe, not Node: use the Node that installed NusaCode.
+    this.proc = spawn(process.versions.electron ? 'node' : process.execPath, [cli, '--mode', 'rpc', ...args], {
       cwd,
       env: { ...process.env, ...(home ? { NUSACODE_HOME: home } : {}) },
       stdio: ['pipe', 'pipe', 'pipe'],
